@@ -193,17 +193,22 @@ template <typename T>
 [[nodiscard]] static Rcpp::NumericVector readFloatColumn(std::istream& fs, std::uint64_t nrec, std::endian byteorder) {
   Rcpp::NumericVector result(nrec);
   for (std::uint64_t i = 0; i < nrec; ++i) {
-    T val = readValue<T>(fs, byteorder);
     if constexpr (std::is_same_v<T, Float80>) {
-      double value{};
       if constexpr (sizeof(long double) == 10) {
-        value = static_cast<double>(std::bit_cast<long double>(val));
+        long double val = readValue<long double>(fs, byteorder);
+        if (!std::isfinite(val)) {
+          result[i] = NA_REAL;
+        }
+        else {
+          result[i] = static_cast<double>(val);
+        }
       }
       else {
         // Convert extended-precision to double
         // see https://en.wikipedia.org/wiki/Extended_precision for layout details
         // FIXME: This could probably be done by copying bits directly, but then
         // special handling for rounding would be required
+        Float80 val = readValue<Float80>(fs, byteorder);
         std::bitset<64> fraction{};
         for (std::uint8_t j = 0; j < 63; ++j) {
           fraction[j] = val[j];
@@ -217,6 +222,8 @@ template <typename T>
         double signpart = (val[79] == 0) ? 1.0 : -1.0;
         std::uint64_t f = fraction.to_ullong();
         std::uint32_t e = exponent.to_ulong();
+        
+        double value{};
         if (e == 0) { // All zero
           if (intpart == 0 && f == 0) {
             value = 0;
@@ -253,15 +260,16 @@ template <typename T>
           double exppart = std::pow(2, e - 16383.0);
           value = signpart * (intpart + fracpart) * exppart;
         }
-      }
-      if (!std::isfinite(value)) {
-        result[i] = NA_REAL;
-      }
-      else {
-        result[i] = value;
+        if (!std::isfinite(value)) {
+          result[i] = NA_REAL;
+        }
+        else {
+          result[i] = value;
+        }
       }
     }
     else {
+      T val = readValue<T>(fs, byteorder);
       if (!std::isfinite(val)) {
         result[i] = NA_REAL;
       }
