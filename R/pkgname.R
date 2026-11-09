@@ -20,12 +20,14 @@
 #' paint <- readJMP(paste0(sampleurl, "/014_paint-wear-accelerated-testing/IDS_014.jmp"))
 #' summary(paint)
 #' 
+#' filename <- tempfile(pattern = "global-temperature", fileext = ".jmp") 
 #' download.file(
 #'   paste0(sampleurl,"/008_global-temperature/IDS_008.jmp"), 
-#'   "IDS_008.jmp", 
+#'   filename, 
 #'   mode = "wb"
 #' )
-#' temperature <- readJMP("IDS_008.jmp")
+#' temperature <- readJMP(filename)
+#' unlink(filename) # delete the downloaded file after reading 
 #' summary(temperature)
 #' }
 #' @section Maintainer:
