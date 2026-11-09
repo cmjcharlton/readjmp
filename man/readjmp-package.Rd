@@ -21,7 +21,7 @@ Chris Charlton \email{c.charlton@bristol.ac.uk}
 }
 
 \examples{
-\dontrun{
+\donttest{
 library(readjmp)
 sampleurl <- "https://www.jmp.com/content/dam/jmp/documents/en/academic/instructional-data-sets"
 paint <- readJMP(paste0(sampleurl, "/014_paint-wear-accelerated-testing/IDS_014.jmp"))
