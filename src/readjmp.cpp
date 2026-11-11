@@ -15,6 +15,13 @@
 #include <string>
 #include <vector>
 
+#ifndef __cpp_lib_byteswap
+#include <array>
+#include <concepts>
+#include <cstddef>
+#include <ranges>
+#endif
+
 #include "zlib.h"
 
 typedef std::bitset<80> Float80;
