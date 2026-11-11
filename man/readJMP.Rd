@@ -7,10 +7,10 @@
 readJMP(filename)
 }
 \arguments{
-\item{filename}{path or url of file to open}
+\item{filename}{path or url of file to open.}
 }
 \value{
-an object of class "data.frame".
+an object of class "data.frame" containing the data that was read.
 }
 \description{
 Reads data from the .jmp file format.

@@ -1,6 +1,6 @@
 #' Reads data from the .jmp file format.
-#' @param filename path or url of file to open
-#' @return an object of class "data.frame". 
+#' @param filename path or url of file to open.
+#' @return an object of class "data.frame" containing the data that was read.
 #' @export
 readJMP <- function(filename) {
   if (isFALSE(file.exists(filename))) {
