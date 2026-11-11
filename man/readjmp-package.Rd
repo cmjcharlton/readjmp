@@ -6,7 +6,7 @@
 \alias{readjmp-package}
 \title{Read .jmp format files}
 \description{
-\pkg{readjmp} is an R command to allow reading data from the .jmp file format
+\pkg{readJMP} is an R command to allow reading data from the .jmp file format
 }
 \details{
 Files corresponding to format versions 1, 3, 7 and 8 are currently supported.
