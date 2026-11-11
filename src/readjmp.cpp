@@ -698,7 +698,7 @@ template <typename T>
       auto colattrend = fs.tellg();
       // colattrblocksize can have one of three values:
       // When reading version >= 7 (little-endian) sizeread == colattrblocksize, including in version 3 warning table at start.
-      // When reading version == 3 (bug-endian) (sizeread + 6) == colattrblocksize. The +6 is to include colattrcount and colattrblocksize
+      // When reading version == 3 (big-endian) (sizeread + 6) == colattrblocksize. The +6 is to include colattrcount and colattrblocksize
       // When reading version == 3 (big-endian) totalcontentsize == colattrblocksize. This only includes the sum of record content
       std::uint64_t sizeread = colattrend - colattrstart;
       if (colattrblocksize != 0 && sizeread != colattrblocksize && (sizeread + 6) != colattrblocksize && totalcontentsize != colattrblocksize) {
