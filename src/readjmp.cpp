@@ -16,6 +16,7 @@
 #include <vector>
 
 #ifndef __cpp_lib_byteswap
+#include <algorithm>
 #include <array>
 #include <concepts>
 #include <cstddef>
@@ -28,7 +29,12 @@ typedef std::bitset<80> Float80;
 
 enum class encoding { UTF8 = 0, Native = 1, XMacRoman = 2, Unknown = 3 };
 
+#if __cplusplus <= 201703L
+	enum class endian { little = 0, big = 1, native = ((0xffff & std::uint16_t(1)) == 0xff00) };
+#endif
+
 #ifndef __cpp_lib_byteswap
+#if __cplusplus > 201703L
 // Replacement function from https://en.cppreference.com/cpp/numeric/byteswap
 template<std::integral T>
 constexpr T byteswap(T value) noexcept {
@@ -36,12 +42,31 @@ constexpr T byteswap(T value) noexcept {
   std::ranges::reverse(value_representation);
   return std::bit_cast<T>(value_representation);
 }
+#else
+template<typename T>
+constexpr T byteswap(T value) noexcept {
+  char* bytes = (char*)&value;
+  std::reverse(bytes, bytes + sizeof(T));
+  return value;
+}
+#endif
+#endif
+
+#ifndef __cpp_lib_bit_cast
+// Replacement function from https://en.cppreference.com/cpp/numeric/bit_cast
+template<class To, class From>
+To bit_cast(const From& src) noexcept {
+  To dst;
+  std::memcpy(&dst, &src, sizeof(To));
+  return dst;
+}
 #endif
 
 static void skipBytes(std::istream& fs, std::size_t off) {
   fs.seekg(off, std::ios::cur);
 }
 
+#if __cplusplus > 201703L
 template <typename T>
 [[nodiscard]] T readValue(std::istream& fs, std::endian byteorder) {
   T result{};
@@ -71,13 +96,40 @@ template <typename T>
   }
   return result;
 }
+#else
+template <typename T>
+[[nodiscard]] T readValue(std::istream& fs, endian byteorder) {
+  T result{};
+  fs.read((char*)&result, sizeof(T));
+  if (endian::native != byteorder) {
+    if constexpr (std::is_same_v<T, float>) {
+      result = bit_cast<float>(byteswap(bit_cast<std::uint32_t>(result)));
+    }
+    else if constexpr (std::is_same_v<T, double>) {
+      result = bit_cast<double>(byteswap(bit_cast<std::uint64_t>(result)));
+    }
+    else {
+      result = byteswap(result);
+    }
+  }
+  return result;
+}
+#endif
 
 template <>
+#if __cplusplus > 201703L
 [[nodiscard]] Float80 readValue<Float80>(std::istream& fs, std::endian byteorder) {
+#else
+[[nodiscard]] Float80 readValue<Float80>(std::istream& fs, endian byteorder) {
+#endif
   Float80 result{};
   std::array<std::uint8_t, 10> bytes{};
   fs.read((char*)bytes.data(), bytes.size());
+#if __cplusplus > 201703L
   if (std::endian::native != byteorder) {
+#else
+  if (endian::native != byteorder) {
+#endif
     std::uint8_t start = 72;
     for (std::uint8_t i = 0; i < 10; ++i) {
       std::bitset<8> byte(bytes[i]);
@@ -182,7 +234,11 @@ static constexpr std::string_view macchars[] {
 }
 
 template <typename T>
+#if __cplusplus > 201703L
 [[nodiscard]] static Rcpp::IntegerVector readIntegerColumn(std::istream& fs, std::uint64_t nrec, std::endian byteorder) {
+#else
+[[nodiscard]] static Rcpp::IntegerVector readIntegerColumn(std::istream& fs, std::uint64_t nrec, endian byteorder) {
+#endif
   Rcpp::IntegerVector result(nrec);
   for (std::uint64_t i = 0; i < nrec; ++i) {
     T val = readValue<T>(fs, byteorder);
@@ -197,7 +253,11 @@ template <typename T>
 }
 
 template <typename T>
+#if __cplusplus > 201703L
 [[nodiscard]] static Rcpp::NumericVector readFloatColumn(std::istream& fs, std::uint64_t nrec, std::endian byteorder) {
+#else
+[[nodiscard]] static Rcpp::NumericVector readFloatColumn(std::istream& fs, std::uint64_t nrec, endian byteorder) {
+#endif
   Rcpp::NumericVector result(nrec);
   for (std::uint64_t i = 0; i < nrec; ++i) {
     if constexpr (std::is_same_v<T, Float80>) {
@@ -288,7 +348,11 @@ template <typename T>
   return result;
 }
 
+#if __cplusplus > 201703L
 [[nodiscard]] static Rcpp::NumericVector readDateColumn(std::istream& fs, std::uint64_t nrec, std::endian byteorder) {
+#else
+[[nodiscard]] static Rcpp::NumericVector readDateColumn(std::istream& fs, std::uint64_t nrec, endian byteorder) {
+#endif
   Rcpp::DatetimeVector result(nrec);
   for (std::uint64_t i = 0; i < nrec; ++i) {
     double val = readValue<double>(fs, byteorder);
@@ -303,7 +367,11 @@ template <typename T>
 }
 
 template <typename T>
+#if __cplusplus > 201703L
 [[nodiscard]] static Rcpp::StringVector readFixedLengthStringColumn(std::istream& fs, std::uint64_t nrec, std::endian byteorder, T width, encoding enc) {
+#else
+[[nodiscard]] static Rcpp::StringVector readFixedLengthStringColumn(std::istream& fs, std::uint64_t nrec, endian byteorder, T width, encoding enc) {
+#endif
   Rcpp::StringVector result(nrec);
   for (std::uint64_t i = 0; i < nrec; ++i) {
     T length = readValue<T>(fs, byteorder);
@@ -315,7 +383,11 @@ template <typename T>
 }
 
 template <typename T>
+#if __cplusplus > 201703L
 [[nodiscard]] static Rcpp::StringVector readVariableLengthStringColumn(std::istream& fs, std::uint64_t nrec, std::endian byteorder, encoding enc) {
+#else
+[[nodiscard]] static Rcpp::StringVector readVariableLengthStringColumn(std::istream& fs, std::uint64_t nrec, endian byteorder, encoding enc) {
+#endif
   [[maybe_unused]] std::uint32_t maxcollen = readValue<std::uint32_t>(fs, byteorder); // max width
   std::vector<T> lens(nrec);
   for (std::uint64_t i = 0; i < nrec; ++i) {
@@ -338,7 +410,11 @@ template <typename T>
 }
 
 template <typename T>
+#if __cplusplus > 201703L
 [[nodiscard]] static Rcpp::IntegerVector readCategoricalColumn(std::istream& fs, std::uint64_t nrec, std::uint64_t ncat, std::endian byteorder, encoding enc) {
+#else
+[[nodiscard]] static Rcpp::IntegerVector readCategoricalColumn(std::istream& fs, std::uint64_t nrec, std::uint64_t ncat, endian byteorder, encoding enc) {
+#endif
   Rcpp::IntegerVector rowvalues(nrec);
   for (std::size_t i = 0; i < nrec; ++i) {
     T value = readValue<T>(fs, byteorder);
@@ -375,7 +451,11 @@ template <typename T>
 }
 
 template <typename T>
+#if __cplusplus > 201703L
 [[nodiscard]] static Rcpp::IntegerVector readRowStateColumn(std::istream& fs, std::uint64_t nrec, std::endian byteorder) {
+#else
+[[nodiscard]] static Rcpp::IntegerVector readRowStateColumn(std::istream& fs, std::uint64_t nrec, endian byteorder) {
+#endif
   // Contains markers, colours, etc
   // See https://www.jmp.com/support/help/en/18.2/index.shtml#page/jmp/row-states.shtml
   // TODO: Convert these values into something more useful
@@ -387,7 +467,11 @@ template <typename T>
   return result;
 }
 
+#if __cplusplus > 201703L
 [[nodiscard]] static Rcpp::RObject readColumn(std::uint32_t version, std::istream& fs, std::endian byteorder, encoding enc, std::uint64_t nrec, std::uint8_t datatype, std::uint8_t fdata, std::uint8_t recwidth1, std::uint8_t recwidth2) {
+#else
+[[nodiscard]] static Rcpp::RObject readColumn(std::uint32_t version, std::istream& fs, endian byteorder, encoding enc, std::uint64_t nrec, std::uint8_t datatype, std::uint8_t fdata, std::uint8_t recwidth1, std::uint8_t recwidth2) {
+#endif
   Rcpp::RObject result;
   if (datatype == 1) { // Floating point
     if (fdata >= 101 && fdata <= 138) { // Date/Time values
@@ -515,13 +599,25 @@ template <typename T>
     if (version < 7) { // Integer (always little-endian)
       switch (recwidth2) {
       case 1: // byte
+#if __cplusplus > 201703L
         result = readIntegerColumn<std::int8_t>(fs, nrec, std::endian::little);
+#else
+        result = readIntegerColumn<std::int8_t>(fs, nrec, endian::little);
+#endif
         break;
       case 2: // short
+#if __cplusplus > 201703L
         result = readIntegerColumn<std::int16_t>(fs, nrec, std::endian::little);
+#else
+        result = readIntegerColumn<std::int16_t>(fs, nrec, endian::little);
+#endif
         break;
       case 4: // int
+#if __cplusplus > 201703L
         result = readIntegerColumn<std::int32_t>(fs, nrec, std::endian::little);
+#else
+        result = readIntegerColumn<std::int32_t>(fs, nrec, endian::little);
+#endif
         break;
       default:
         Rcpp::warning("Unhandled size: %i", recwidth2);
@@ -557,7 +653,11 @@ template <typename T>
   return result;
 }
 
+#if __cplusplus > 201703L
 [[nodiscard]] static Rcpp::DataFrame readTable(std::uint32_t version, std::istream& fs, std::endian byteorder, std::uint64_t nrec, std::uint32_t nvar) {
+#else
+[[nodiscard]] static Rcpp::DataFrame readTable(std::uint32_t version, std::istream& fs, endian byteorder, std::uint64_t nrec, std::uint32_t nvar) {
+#endif
   Rcpp::DataFrame result;
   encoding enc = encoding::Native;
   
@@ -591,8 +691,10 @@ template <typename T>
     }
     else if (rtype == 7) { // Creation date
       double dt = readValue<double>(fs, byteorder); // save time
+#if __cplusplus > 201703L
       std::chrono::sys_time tp{ std::chrono::seconds{ static_cast<std::int64_t>(dt - 2082844800) } }; // Convert from 1st January 1904 to 1st January 1970 epoch
       Rcpp::Rcout << std::format("Creation date: {}", tp) << std::endl;
+#endif
     }
     else if (rtype == 18) {
       std::string ver = Enc2UTF8(readString(fs, rsize), enc); // release information
@@ -843,12 +945,24 @@ Rcpp::DataFrame rcpp_readjmp(std::string filename) {
   }
   std::vector<std::uint8_t> sig(4);
   fs.read((char*)sig.data(), sig.size());
+#if __cplusplus > 201703L
   std::endian byteorder = std::endian::native;
+#else
+  endian byteorder = endian::native;
+#endif
   if (sig[0] == 0 && sig[1] == 0 && sig[2] == 0xff && sig[3] == 0xff) {
+#if __cplusplus > 201703L
     byteorder = std::endian::big;
+#else
+    byteorder = endian::big;
+#endif
   }
   else if (sig[0] == 0xff && sig[1] == 0xff && sig[2] == 0 && sig[3] == 0) {
+#if __cplusplus > 201703L
     byteorder = std::endian::little;
+#else
+    byteorder = endian::little;
+#endif
   }
   else {
     Rcpp::stop("Unrecognised file format");

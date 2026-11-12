@@ -8,6 +8,6 @@ Description: This package allows extraction of data from files saved by 'JMP' in
 Encoding: UTF-8
 License: MIT + file LICENSE
 URL: https://github.com/cmjcharlton/readjmp
-Imports: Rcpp (>= 1.1.2)
+Imports: Rcpp (>= 1.0.14)
 LinkingTo: Rcpp
 Config/roxygen2/version: 8.1.0
