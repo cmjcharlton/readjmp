@@ -4,7 +4,7 @@ Title: Read Data from .jmp Format Files Saved by 'JMP'
 Version: 0.5.1
 Date: 2026-10-26
 Authors@R: person("Chris", "Charlton", role = c("aut", "cre"), email = "c.charlton@bristol.ac.uk")
-Description: This package allows extraction of data from files saved by 'JMP' in the .jmp format.
+Description: Allows extraction of data from files saved by 'JMP' in the .jmp format.
 Encoding: UTF-8
 License: MIT + file LICENSE
 URL: https://github.com/cmjcharlton/readjmp
